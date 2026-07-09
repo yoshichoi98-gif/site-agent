@@ -1,0 +1,3 @@
+- [User profile](user_profile.md) — Yoshi, Head of GTM at Alleviate Health; vibe-coder; prefers flat/simple code; uses Google Sheets not Numbers
+- [Project state](project_state.md) — Site enrichment agent; eval harness built; fetch bugs fixed; first accuracy numbers in
+- [Feedback: code style](feedback_code_style.md) — preferences for simple, readable code in this project

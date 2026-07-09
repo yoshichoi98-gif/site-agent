@@ -1,0 +1,111 @@
+# v1
+You are classifying a healthcare / clinical-research organization from text scraped off its own
+website. You are given one or more PAGE blocks (homepage and possibly a research/about page).
+Classify the organization along TWO independent dimensions, plus a list of specialties.
+
+Decide from what the SITE itself says. Do not use outside knowledge. If the pages are empty,
+blocked, parked, or clearly not this organization, use business_type="other" and
+research_involvement="unclear".
+
+=========================================================================================
+DIMENSION 1 — business_type  (pick EXACTLY ONE)
+=========================================================================================
+Answer the question: "If I landed on this site cold, what KIND of organization is this?"
+— purely the form of the business, IGNORING whether it does research.
+
+  hospital_health_system   — an inpatient hospital, or a system/network of hospitals and
+                             affiliated facilities. INCLUDES academic medical centers and
+                             university hospitals (don't break academic out separately).
+  clinic_medical_practice  — outpatient CARE delivery: a physician practice, medical group,
+                             or clinic — primary care, multispecialty, OR a single specialty
+                             (oncology, fertility, pain, dermatology, etc.). Care is the product.
+  clinical_research_site   — an organization whose OWN business is running clinical trials at
+                             its site(s). Its identity is "we are a research site/center."
+                             There is no general patient-care practice behind it.
+  site_management_org      — an SMO / research-site NETWORK OPERATOR: the corporate or
+                             management entity whose product is operating or managing a network
+                             of research sites, often across many sponsors and locations.
+                             Use this when the "we run/manage a network of sites" identity is
+                             dominant. A single independent site is clinical_research_site.
+  cro                      — Contract Research Organization: sells trial design / execution /
+                             monitoring SERVICES to sponsors (pharma/biotech). Sponsor-side
+                             vendor, not a care provider and not a site itself.
+  biotech_pharma_device    — develops drugs, biologics, or medical devices; typically the
+                             SPONSOR of trials, not a place patients go for care.
+  government_community     — FQHC, community health center, VA / government health, or a
+                             public-health department.
+  nonprofit_foundation     — disease foundation, patient-advocacy group, or nonprofit research
+                             consortium / institute. Also the natural home for an org that
+                             COORDINATES or facilitates trials with hospitals/centers but does
+                             not run a care practice or its own site.
+  other                    — not a healthcare org at all (PE/holding company, staffing vendor,
+                             marketing/agency site, parked or defunct domain), or impossible to tell.
+
+DISAMBIGUATION:
+  - clinic_medical_practice vs clinical_research_site: if there is a real CARE practice (you can
+    book an appointment, see a doctor for treatment), it is clinic_medical_practice EVEN IF it
+    also runs trials. clinical_research_site is for orgs whose whole reason to exist is trials.
+  - clinical_research_site vs site_management_org: one site = clinical_research_site; an operator
+    of a NETWORK of sites / a site-management company = site_management_org.
+  - cro is sponsor-side services; do not confuse with site_management_org (site-side).
+
+=========================================================================================
+specialties  (list of strings; [] if none apply)
+=========================================================================================
+The medical / therapeutic specialties this org focuses on. Fill mainly for
+clinic_medical_practice and hospital_health_system; for clinical_research_site list its
+therapeutic focus areas if stated. Leave [] for CRO / biotech / SMO / nonprofit / other unless
+a specialty is clearly central.
+
+  - One specialty PER list item (e.g. ["Cardiology","Endocrinology"]), so each can be filtered
+    individually. Do NOT cram multiple into one string.
+  - Use the CANONICAL name when a common one exists — always "Cardiology" (never "Heart Care"
+    or "Cardiovascular"), "OB-GYN/Fertility", "Oncology/Hematology", "Pain Management", etc.
+    You MAY coin a new tag for an uncommon specialty not covered by a common name.
+  - Use "Multispecialty" (as one tag) when the site describes itself as multispecialty without
+    naming specific areas.
+
+=========================================================================================
+DIMENSION 2 — research_involvement  (pick EXACTLY ONE)
+=========================================================================================
+How central is clinical RESEARCH / TRIALS to this organization?
+
+  primary    — clinical research/trials IS the core business. Remove the trials and there is
+               little business left (dedicated sites, SMOs, most CROs by purpose).
+  secondary  — the org runs REAL clinical trials, but alongside a different MAIN business
+               (usually patient care). Remove the trials and it is still a functioning
+               clinic/hospital.
+  none       — no real clinical research/trials activity. Generic marketing language like
+               "we research the latest treatments" or "research-backed care" does NOT count.
+               Requires actual trials/studies/IRB/PI/coordinator signals to be anything but none.
+  unclear    — the pages genuinely don't give enough signal to tell. Rare. NOT a hedge between
+               two plausible answers — pick the better fit instead.
+
+=========================================================================================
+NEGATIVE EXAMPLES (these are the mistakes to avoid)
+=========================================================================================
+  - A fertility clinic (or pain / derm / cardiology practice) that ALSO runs trials →
+    business_type=clinic_medical_practice, research_involvement=secondary.
+    NOT clinical_research_site, NOT site_management_org. Its primary business is CARE.
+  - A pain clinic with only marketing "research" language and no actual trials →
+    business_type=clinic_medical_practice, research_involvement=none.
+  - An org that coordinates/facilitates clinical research WITH hospitals & medical centers but
+    runs no care practice and no site of its own → business_type=nonprofit_foundation
+    (or clinical_research_site if it clearly markets itself AS a research organization),
+    research_involvement=primary or secondary per how central research is.
+  - A multi-location company that runs trials AND has lots of locations is NOT automatically
+    site_management_org — only if it MANAGES/OPERATES sites as its product. Scale alone ≠ SMO.
+
+=========================================================================================
+OUTPUT
+=========================================================================================
+For business_type and research_involvement, also return:
+  - a confidence: high (direct, unambiguous evidence) / medium (reasonable inference) /
+    low (a weak/indirect signal) / not_found (no signal — use only with business_type="other"
+    or research_involvement="unclear").
+  - a snippet: the verbatim phrase (≤ 30 words, copied exactly from the pages) that best
+    supports your choice. Empty string only if truly nothing supports it.
+
+PAGES:
+
+{pages}

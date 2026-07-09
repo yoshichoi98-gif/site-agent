@@ -1,0 +1,73 @@
+# v10
+You are extracting individual research-active locations from a clinical research organization's website.
+
+You will be given cleaned text from multiple pages, each in the structured format:
+
+  PAGE: <url>
+  TITLE: ...
+  HEADINGS: ...
+  META: ...
+  CONTACT LINKS:
+    tel:...
+    mailto:...
+  FOOTER: ...
+  BODY: ...
+  GOOGLE_MAPS_ADDRESS(ES): ...   (full street addresses decoded from embedded Google Maps iframes / direction links)
+  RAW_TEXT: ...                  (raw visible page text — present when BODY is sparse; often holds addresses inside styled widgets)
+
+NOTE: a page may also contain JSON-LD / microdata / data-attribute address blocks. The street address
+for a location is frequently NOT in BODY but IS in FOOTER, RAW_TEXT, GOOGLE_MAPS_ADDRESS(ES), or those
+structured blocks — always check ALL sections of a page before deciding a street is missing.
+
+ENUMERATION RULE:
+This site has been classified as research-active at the organizational level. Enumerate ALL distinct
+office/clinic locations listed on the site. Treat all locations as part of a research-active
+organization. Per-location research evidence is NOT required — return any address with a valid
+street and city.
+
+For each location you can identify, return:
+  location_name     — e.g. "HQ", "Palm Beach Gardens Branch", or null if not labeled
+  address_street    — the FULL street address: building number + street name + suite/unit/floor if shown
+                      (e.g. "1020 W 34th Street, Suite 200"). REQUIRED whenever a street for this location
+                      appears ANYWHERE in the page text — search BODY, FOOTER, CONTACT, RAW_TEXT,
+                      GOOGLE_MAPS_ADDRESS(ES), and any JSON-LD/microdata blocks, and assemble the complete
+                      street. Set null ONLY if no street exists anywhere in the text for this location.
+  address_city      — city if present, else null
+  address_state     — state/province if present, else null
+  address_zip       — zip/postal code if present, else null
+  phone             — phone specific to this location, else null
+  source_url        — MUST be one of the PAGE urls provided in the text
+  snippet           — ≤30 words, VERBATIM substring from that page that supports this location
+  confidence        — high | medium | low
+
+CAP: Return at most 500 locations. If more than 500 exist in the source text, return the 500 with
+the most complete address data (prefer entries that have street address > city+state > city only).
+When you stop at 500 but more exist, set capped=true and capped_reason to a short note like
+"500-of-600+ from /locations-by-state page" — include any visible total count from the page.
+
+HARD RULES:
+1. Use ONLY the provided page text. No prior knowledge of the organization.
+2. The snippet MUST be a verbatim substring of the provided text. Do not paraphrase.
+3. The source_url MUST be one of the PAGE urls in the provided text.
+4. If no locations are found, return an empty list with capped=false.
+5. Do not invent addresses. PREFER THE FULL STREET: if a street address for a location appears in any
+   section (including GOOGLE_MAPS_ADDRESS(ES), RAW_TEXT, FOOTER, or JSON-LD/microdata), you MUST use it —
+   do NOT return city/state-only when a street is available somewhere in the text. Return city/state-only
+   ONLY when no street exists anywhere for that location, and set confidence=low for those.
+6. Do not include duplicate locations. If the same address appears multiple times, return it once.
+7. capped=false when you returned ALL qualifying locations (even if that number is 0).
+   capped=true ONLY when you stopped at 500 and more qualifying locations remain in the text.
+8. ONLY include locations that this organization directly owns or operates. Do NOT include:
+   - Partner practices, affiliated organizations, or referral networks
+   - Locations listed on pages like /our-partners/, /affiliates/, /network/, /partners/
+   - Other companies or practices that are merely associated with this organization
+   If a page is clearly a "partners" or "affiliates" page, skip all locations on it.
+9. ONE row per PHYSICAL ADDRESS, not per person or per service. If a page lists multiple
+   doctors, providers, or services that all share the SAME address, return that address
+   ONCE — do NOT create one row per doctor/service with the address copy-pasted across them.
+   Doctor names, provider names, and service names are NOT locations. A location is a
+   distinct physical street address. If you cannot find a distinct street address for an
+   entry, do NOT invent one by copying another location's address.
+
+PAGE TEXT:
+{pages}

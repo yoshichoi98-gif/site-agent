@@ -1,0 +1,101 @@
+# v16
+You are extracting structured facts about a clinical research site from its website.
+
+You will receive up to 7 pages of content. Each page is structured as:
+
+  PAGE: <url>
+  TITLE: <page title>
+  HEADINGS:
+    H1: ...
+    H2: ...
+  META: <meta description and og:* tags>
+  CONTACT LINKS:
+    tel:...
+    mailto:...
+  FOOTER:
+    <footer text>
+  BODY:
+    <main body text>
+  GOOGLE_MAPS_ADDRESS: (optional — address extracted from embedded Google Maps iframe)
+    <decoded address>
+  RAW_TEXT: (optional — present when BODY is sparse or missing address/phone signals)
+    <raw visible text from the full page>
+
+For EACH field in the SiteProfile schema, return:
+- value (or null if not found on any provided page)
+- source_url (the PAGE url where the evidence was found)
+- snippet (≤30 words, VERBATIM substring from any section of that page — copy-paste exactly, do NOT paraphrase or reconstruct)
+- confidence: high | medium | low | not_found
+
+HARD RULES:
+1. Use ONLY the provided page text. Do not use prior knowledge of the organization.
+2. If a fact is not stated on any provided page, set value=null and confidence=not_found.
+3. The source_url MUST be one of the URLs that appears in the provided text headers (e.g. "PAGE: <url>").
+4. SNIPPET IS MANDATORY FOR ANY NON-NULL VALUE, except for canonical_org_name, hq_phone, and
+   hq_address — for those three fields, snippet is optional (set to null if no clean verbatim
+   quote is available). For all other fields, if you cannot find a verbatim substring that
+   directly supports the value, you MUST set value=null and confidence=not_found.
+5. confidence=low means: a snippet exists but the inference from it is uncertain or indirect.
+   confidence=low is NOT for cases where a snippet is missing — that case is always not_found.
+6. canonical_org_name = the name the organization uses to refer to itself on its own site.
+   Do NOT use the name from the input row; that comes from ClinicalTrials.gov and may be stale.
+7. LOCATION COUNT — list beats prose: If any page contains an explicit enumerated list of named
+   locations (e.g. a /locations page listing each office by city or address), count the items in that
+   list and use that count for location_count. A prose claim ("we have 7 locations") is overridden by
+   the actual list. If they disagree, set location_count to the list count and note the discrepancy
+   in the snippet (e.g. "Site says 7 but lists 8: Clifton, Denville, Hoboken, Morristown...").
+
+FIELD DEFINITIONS:
+- canonical_org_name: org's preferred name as shown on its own site
+- hq_phone: main phone number, prefer E.164 if you can parse it (e.g., +15551234567), otherwise as-shown
+- hq_address: full mailing address of headquarters. Prefer: (1) any address labeled "main office",
+  "headquarters", or "HQ"; (2) the address on /contact or /contact-us; (3) the footer address.
+  When a contact page lists multiple office addresses, pick the first one or the one labeled as primary.
+  Ignore entries explicitly marked "business office only", "satellite", or "administrative office".
+- location_count: number of physical locations. Return as a digit or digit+plus (e.g., "1", "8", "90+"),
+  NOT as prose like "single location" or "multiple sites". Use prose only when the count is genuinely
+  ambiguous and no digit can be inferred (e.g., "several" with no number given). String, not int.
+  See HARD RULE 7 for how to handle disagreements between prose claims and enumerated lists.
+- research_url: a URL ON THIS SITE that prominently mentions clinical research/trials.
+                If multiple, pick the most canonical (e.g., /research over /about#research).
+                Must be one of the PAGE URLs provided.
+- org_subcategory: pick ONE value from this list. Do NOT invent new labels.
+
+  RESEARCH-TARGET buckets (primary prospecting targets):
+    dedicated_research_site          — single-location SMO; running clinical trials is its primary business
+    dedicated_research_site_network  — multi-location SMO or research site network
+    site_management_organization     — SMO that manages clinical trial sites across sponsors/CROs
+
+  ADJACENT (research-active but not primary targets):
+    specialty_practice_with_research        — specialty practice (any specialty) that conducts trials
+    oncology_practice_with_research         — oncology practice that conducts clinical trials
+    regional_health_system_with_research    — regional health system that conducts clinical trials
+    hospital_system_with_research           — hospital system that conducts clinical trials
+
+  NON-RESEARCH:
+    contract_research_organization   — CRO; runs trials for sponsors, not a site itself
+    specialty_practice               — specialty practice, no clinical research activity
+    oncology_practice                — oncology practice, no clinical research activity
+    regional_health_system           — regional health system, no research mention
+    hospital_system                  — hospital system, no research mention
+    physician_group                  — multi-physician practice
+    federally_qualified_health_center — FQHC, community health center, or similar
+    nonprofit_research_organization  — research consortium, foundation, or nonprofit
+    biotech                          — biotech or pharma company
+
+  OTHER:
+    unclear  — site provides no structural signal to classify
+    other    — domain is something else entirely (PE firm, law office, defunct, etc.)
+
+  Rules:
+  - RESEARCH PRESENCE RULE: if the site mentions clinical trials, clinical research,
+    IRB-approved studies, principal investigators, study coordinators, or active research
+    programs ANYWHERE on any provided page, pick a _with_research variant or a RESEARCH-TARGET
+    bucket. Do NOT pick a plain NON-RESEARCH value if research signals are present.
+    Conversely: if the site has NO such mentions, do NOT pick a _with_research variant.
+    Marketing language like "we research the latest treatments" does NOT count.
+  - DECISIVENESS RULE: pick the better fit; use "unclear" only when the site genuinely
+    provides no structural signal — not as a hedge between two plausible options.
+  - Snippet required: cite the verbatim phrase that best supports the chosen label.
+
+{pages}
