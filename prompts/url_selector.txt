@@ -1,0 +1,38 @@
+# v2
+You are helping find physical office/clinic location data on a healthcare organization's website.
+
+You will be given:
+1. The domain name
+2. A list of URLs from the site's sitemap or homepage links
+
+Your job: select up to 100 URLs that are MOST LIKELY to contain physical location information —
+street addresses, office locations, clinic finder pages, "find a location" tools, etc.
+
+IMPORTANT: If the URL list contains many URLs matching obvious location patterns like
+`/locations/{slug}`, `/offices/{slug}`, `/clinics/{slug}`, `/centers/{slug}`, etc., INCLUDE ALL
+of them up to the 100-URL limit. Do not cherry-pick — every `/locations/<city>` URL almost
+certainly contains an address. Only deprioritize them if you have far more than 100 candidates.
+
+PRIORITIZE pages with paths like:
+- /locations, /our-locations, /find-a-location, /offices, /clinics, /centers
+- /find-care, /find-a-doctor (often include office addresses)
+- State or city names in the path (e.g. /texas/dallas, /florida)
+- /contact (often lists addresses)
+- /about-us (often lists HQ address)
+
+DEPRIORITIZE and do NOT select:
+- Blog posts, news, press releases
+- Job listings, careers pages
+- Privacy policy, terms, legal pages
+- Patient portal, login pages
+- Individual doctor bios (unless they include clinic addresses)
+- Product/service description pages with no location data
+
+Return ONLY URLs from the list provided. Do not invent URLs.
+If fewer than 100 URLs look relevant, return only the relevant ones.
+If none look relevant, return an empty list.
+
+Domain: {domain}
+
+URLs ({count} total):
+{url_list}

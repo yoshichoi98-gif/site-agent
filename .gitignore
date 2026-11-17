@@ -1,0 +1,23 @@
+# --- Secrets (never commit) ---
+.env
+.env.local
+credentials/
+*service_account*.json
+*.pem
+*.key
+
+# --- Data, outputs, caches (regenerable; not source) ---
+data/
+downloads/
+*.bak
+*.bak-*
+
+# --- Python / tooling cruft ---
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+site_agent.egg-info/
+.claude/
+.DS_Store
